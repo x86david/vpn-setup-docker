@@ -10,16 +10,21 @@ apt install -y ca-certificates curl gnupg git openssh-client
 
 # Resetear repositorio oficial de Docker
 echo "🔑 Configurando repositorio oficial de Docker..."
-rm -f /etc/apt/sources.list.d/docker.list   # remove broken file if present
+rm -f /etc/apt/sources.list.d/docker.list   # eliminar archivo roto si existe
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 chmod 0644 /etc/apt/keyrings/docker.gpg
 
-# Obtener codename de la distribución
+# Detectar distribución y codename
 . /etc/os-release
-CODENAME=${VERSION_CODENAME:-bookworm}   # fallback to bookworm if empty
+if [ "$ID" = "ubuntu" ]; then
+  CODENAME=${VERSION_CODENAME:-jammy}
+else
+  # Debian 12 = bookworm, Debian 13 = trixie
+  CODENAME=${VERSION_CODENAME:-bookworm}
+fi
 
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian ${CODENAME} stable" \
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/${ID} ${CODENAME} stable" \
   | tee /etc/apt/sources.list.d/docker.list > /dev/null
 
 apt update -y
