@@ -36,33 +36,10 @@ apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker
 # Habilitar y arrancar Docker
 systemctl enable --now docker
 
-# Instalar iptables-persistent para guardar reglas
-echo "🛡️ Instalando iptables-persistent..."
-DEBIAN_FRONTEND=noninteractive apt install -y iptables-persistent netfilter-persistent
-
-# Configurar sysctl para forwarding
-echo "🔧 Configurando sysctl para forwarding..."
-cat <<EOF >> /etc/sysctl.conf
-net.ipv4.ip_forward=1
-net.ipv6.conf.all.forwarding=1
-EOF
-sysctl -p
-
-# Detectar interfaz externa
-EXT_IF=$(ip route | grep default | awk '{print $5}')
-
-# Configurar NAT IPv4
-echo "🌐 Configurando NAT IPv4..."
-iptables -t nat -C POSTROUTING -s 10.9.0.0/24 -o "$EXT_IF" -j MASQUERADE 2>/dev/null || \
-iptables -t nat -A POSTROUTING -s 10.9.0.0/24 -o "$EXT_IF" -j MASQUERADE
-
-# Configurar NAT IPv6
-echo "🌐 Configurando NAT IPv6..."
-ip6tables -t nat -C POSTROUTING -s fd42:42:42:42::/64 -o "$EXT_IF" -j MASQUERADE 2>/dev/null || \
-ip6tables -t nat -A POSTROUTING -s fd42:42:42:42::/64 -o "$EXT_IF" -j MASQUERADE
-
-# Guardar reglas persistentes
-netfilter-persistent save
+# --- Firewall setup with UFW ---
+echo "🛡️ Configurando firewall con UFW..."
+# Call the dedicated ufw.sh script instead of manipulating iptables directly
+bash ./ufw.sh
 
 # Generar clave SSH directamente en ~/.ssh si no existe
 SSH_DIR="/root/.ssh"
