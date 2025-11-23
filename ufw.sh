@@ -70,6 +70,10 @@ ufw allow ssh
 ufw allow in on $VPN_IFACE
 ufw allow out on $VPN_IFACE
 
+# --- Allow outbound DNS (fixes name resolution) ---
+ufw allow out 53/udp
+ufw allow out 53/tcp
+
 echo "[*] Enabling UFW..."
 ufw --force enable
 ufw reload
@@ -86,4 +90,4 @@ if command -v docker-compose >/dev/null 2>&1; then
   docker-compose restart
 fi
 
-echo "[✓] VPN + Docker + UFW restrictive setup complete."
+echo "[✓] VPN + Docker + DNS + UFW restrictive setup complete."
