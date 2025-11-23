@@ -30,17 +30,13 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 
-# --- Crear configuración automática ---
-cat <<EOF >/usr/local/etc/no-ip2.conf
-# Configuración No-IP
-# interface: enp0s3
-# usuario: tu_email@noip.com
-# contraseña: tu_password
-# host: all.ddnskey.com
-# intervalo: 30 minutos
-EOF
-
 systemctl daemon-reload
+
+echo "🔑 Ejecutando configuración interactiva de No-IP..."
+# Aquí se lanza el asistente, el usuario irá respondiendo
+sudo /usr/local/bin/noip2 -C
+
+# Una vez creado el fichero de configuración, arrancamos el servicio
 systemctl enable --now noip2
 
 echo "✅ No-IP instalado, configurado y servicio systemd activo"
