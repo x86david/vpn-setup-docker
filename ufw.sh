@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # --- Variables ---
 VPN_SUBNET_V4="10.9.0.0/24"
@@ -7,6 +7,9 @@ VPN_SUBNET_V6="fd42:42:42:42::/64"
 VPN_PORT="1194"
 VPN_PROTO="udp"
 VPN_IFACE="tun0"
+
+# Docker default bridge subnet (adjust if you use custom networks)
+DOCKER_SUBNET_V4="172.17.0.0/16"
 
 UFW_BEFORE="/etc/ufw/before.rules"
 UFW_BEFORE6="/etc/ufw/before6.rules"
@@ -40,17 +43,21 @@ echo "[*] Setting restrictive defaults..."
 ufw default deny incoming
 ufw default allow outgoing
 
-# --- NAT masquerade rules (VPN clients -> Internet) ---
+# --- NAT masquerade rules (VPN + Docker -> Internet) ---
 cat <<EOF > $UFW_BEFORE
 *nat
 :POSTROUTING ACCEPT [0:0]
+# VPN subnet
 -A POSTROUTING -s $VPN_SUBNET_V4 -o $WAN_IFACE -j MASQUERADE
+# Docker subnet
+-A POSTROUTING -s $DOCKER_SUBNET_V4 -o $WAN_IFACE -j MASQUERADE
 COMMIT
 EOF
 
 cat <<EOF > $UFW_BEFORE6
 *nat
 :POSTROUTING ACCEPT [0:0]
+# VPN IPv6 subnet
 -A POSTROUTING -s $VPN_SUBNET_V6 -o $WAN_IFACE -j MASQUERADE
 COMMIT
 EOF
@@ -79,4 +86,4 @@ if command -v docker-compose >/dev/null 2>&1; then
   docker-compose restart
 fi
 
-echo "[✓] VPN + UFW restrictive setup complete."
+echo "[✓] VPN + Docker + UFW restrictive setup complete."
