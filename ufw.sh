@@ -22,6 +22,14 @@ apt-get install -y ufw
 echo "[*] Resetting UFW to defaults..."
 ufw --force reset
 
+# Limpiar reglas previas en before.rules y before6.rules
+echo "" > $UFW_BEFORE
+echo "" > $UFW_BEFORE6
+
+# Limpiar reglas iptables NAT acumuladas
+iptables -t nat -F
+iptables -t nat -X
+
 echo "[*] Enabling IPv4/IPv6 forwarding..."
 sed -i 's/^#net\/ipv4\/ip_forward=1/net.ipv4.ip_forward=1/' /etc/ufw/sysctl.conf
 sed -i 's/^#net\/ipv6\/conf\/default\/forwarding=1/net.ipv6.conf.default.forwarding=1/' /etc/ufw/sysctl.conf
@@ -34,13 +42,19 @@ echo "[*] Setting UFW forward policy to DROP (restrictive)..."
 sed -i 's/^DEFAULT_FORWARD_POLICY=.*/DEFAULT_FORWARD_POLICY="DROP"/' /etc/default/ufw
 
 echo "[*] Configuring NAT masquerade rules..."
-if ! grep -q "$VPN_SUBNET_V4" $UFW_BEFORE; then
-  sed -i "1i *nat\n:POSTROUTING ACCEPT [0:0]\n-A POSTROUTING -s $VPN_SUBNET_V4 -o $WAN_IFACE -j MASQUERADE\nCOMMIT\n" $UFW_BEFORE
-fi
+cat <<EOF > $UFW_BEFORE
+*nat
+:POSTROUTING ACCEPT [0:0]
+-A POSTROUTING -s $VPN_SUBNET_V4 -o $WAN_IFACE -j MASQUERADE
+COMMIT
+EOF
 
-if ! grep -q "$VPN_SUBNET_V6" $UFW_BEFORE6; then
-  sed -i "1i *nat\n:POSTROUTING ACCEPT [0:0]\n-A POSTROUTING -s $VPN_SUBNET_V6 -o $WAN_IFACE -j MASQUERADE\nCOMMIT\n" $UFW_BEFORE6
-fi
+cat <<EOF > $UFW_BEFORE6
+*nat
+:POSTROUTING ACCEPT [0:0]
+-A POSTROUTING -s $VPN_SUBNET_V6 -o $WAN_IFACE -j MASQUERADE
+COMMIT
+EOF
 
 echo "[*] Configuring UFW rules..."
 ufw default deny incoming
