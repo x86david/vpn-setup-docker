@@ -32,11 +32,11 @@ EOF
 
 systemctl daemon-reload
 
-echo "🔑 Ejecutando configuración interactiva de No-IP..."
-# Aquí se lanza el asistente, el usuario irá respondiendo
-sudo /usr/local/bin/noip2 -C
+echo "🔑 Lanzando configuración interactiva de No-IP..."
+# Aquí se abre el asistente y el usuario introduce sus datos
+/usr/local/bin/noip2 -C
 
-# Una vez creado el fichero de configuración, arrancamos el servicio
+echo "▶️ Arrancando servicio noip2..."
 systemctl enable --now noip2
 
 echo "✅ No-IP instalado, configurado y servicio systemd activo"
