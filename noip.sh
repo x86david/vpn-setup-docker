@@ -10,28 +10,37 @@ cd noip-2.1.9-1/binaries
 
 ARCH=$(uname -m)
 if [ "$ARCH" = "x86_64" ]; then
-  sudo cp noip2-x86_64 /usr/local/bin/noip2
+  cp noip2-x86_64 /usr/local/bin/noip2
 else
-  sudo cp noip2-i686 /usr/local/bin/noip2
+  cp noip2-i686 /usr/local/bin/noip2
 fi
-sudo chmod 755 /usr/local/bin/noip2
+chmod 755 /usr/local/bin/noip2
 
 echo "⚙️ Creando servicio systemd para noip2..."
-cat <<EOF | sudo tee /etc/systemd/system/noip2.service
+cat <<EOF >/etc/systemd/system/noip2.service
 [Unit]
 Description=No-IP Dynamic DNS Update Client
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/noip2
+ExecStart=/usr/local/bin/noip2 -c /usr/local/etc/no-ip2.conf
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-sudo systemctl daemon-reload
-sudo systemctl enable --now noip2
+# --- Crear configuración automática ---
+cat <<EOF >/usr/local/etc/no-ip2.conf
+# Configuración No-IP
+# interface: enp0s3
+# usuario: tu_email@noip.com
+# contraseña: tu_password
+# host: all.ddnskey.com
+# intervalo: 30 minutos
+EOF
 
-echo "⚠️ Ejecuta 'sudo /usr/local/bin/noip2 -C' manualmente una vez para configurar tu cuenta y hostname de No-IP (elige la interfaz enp0s3)."
-echo "✅ No-IP instalado y servicio systemd configurado"
+systemctl daemon-reload
+systemctl enable --now noip2
+
+echo "✅ No-IP instalado, configurado y servicio systemd activo"
