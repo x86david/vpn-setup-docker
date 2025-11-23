@@ -6,7 +6,7 @@ echo "🚀 Instalando dependencias en el servidor..."
 # Actualizar paquetes base
 apt update -y
 apt upgrade -y
-apt install -y ca-certificates curl gnupg git openssh-client
+apt install -y ca-certificates curl gnupg git openssh-client build-essential tar wget
 
 # Resetear repositorio oficial de Docker
 echo "🔑 Configurando repositorio oficial de Docker..."
@@ -38,10 +38,9 @@ systemctl enable --now docker
 
 # --- Firewall setup with UFW ---
 echo "🛡️ Configurando firewall con UFW..."
-# Call the dedicated ufw.sh script instead of manipulating iptables directly
 bash ./ufw.sh
 
-# Generar clave SSH directamente en ~/.ssh si no existe
+# --- SSH key setup for GitHub ---
 SSH_DIR="/root/.ssh"
 KEY_FILE="$SSH_DIR/id_ed25519"
 
@@ -84,8 +83,15 @@ echo "🔑 Generando llaves con EasyRSA..."
 ./scripts/gen-keys-local.sh
 
 # Levantar el servicio con Docker Compose
-echo "🐳 Levantando OpenVPN con Docker Compose..."
+echo "🐳 Levantando OpenVPN y reverse proxy con Docker Compose..."
 docker compose up -d
 
 echo "✅ OpenVPN desplegado en el servidor"
 echo "👉 Usa ./clients/create-client.sh <usuario> para generar perfiles .ovpn"
+echo "👉 Edita nginx.conf y reinicia el contenedor proxy para añadir servicios internos"
+
+# --- Run No-IP setup script at the end ---
+echo "🌐 Ejecutando script de instalación de No-IP..."
+bash ./noip.sh
+
+echo "✅ Configuración completa del servidor con No-IP"
