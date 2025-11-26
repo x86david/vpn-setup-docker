@@ -40,15 +40,9 @@ iptables -t nat -A POSTROUTING -s $VPN_SUBNET_V4 -o $WAN_IFACE -j MASQUERADE
 iptables -t nat -A POSTROUTING -s $DOCKER_SUBNET_V4 -o $WAN_IFACE -j MASQUERADE
 ip6tables -t nat -A POSTROUTING -s $VPN_SUBNET_V6 -o $WAN_IFACE -j MASQUERADE
 
-echo "🔓 Allowing inbound SSH (22/tcp) + proxy port (2222/tcp)..."
+echo "🔓 Allowing inbound SSH + VPN..."
 iptables -A INPUT -i $WAN_IFACE -p tcp --dport 22 -j ACCEPT
-iptables -A INPUT -i $WAN_IFACE -p tcp --dport 2222 -j ACCEPT
-
-echo "🔓 Allowing inbound VPN ($VPN_PORT/$VPN_PROTO)..."
 iptables -A INPUT -i $WAN_IFACE -p $VPN_PROTO --dport $VPN_PORT -j ACCEPT
-
-echo "🔓 Allowing SSH on VPN interface (tun0)..."
-iptables -A INPUT -i $VPN_IFACE -p tcp --dport 22 -j ACCEPT
 
 echo "🔓 Allowing established/related traffic..."
 iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
@@ -58,11 +52,11 @@ echo "🔓 Allowing localhost..."
 iptables -A INPUT -i lo -j ACCEPT
 iptables -A OUTPUT -o lo -j ACCEPT
 
-echo "🔓 Allowing nginx/webserver ports (80/tcp and 443/tcp)..."
+echo "🔓 Allowing nginx/webserver on port 80 + 443..."
 iptables -A INPUT -i $WAN_IFACE -p tcp --dport 80 -j ACCEPT
 iptables -A INPUT -i $WAN_IFACE -p tcp --dport 443 -j ACCEPT
 
 echo "💾 Saving rules..."
 netfilter-persistent save
 
-echo "[✓] Minimal iptables firewall setup complete (VPN, SSH, nginx ports, proxy port for Nginx stream)."
+echo "[✓] iptables firewall setup complete (VPN, Docker, nginx, host connectivity)."
