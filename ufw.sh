@@ -42,7 +42,11 @@ ip6tables -t nat -A POSTROUTING -s $VPN_SUBNET_V6 -o $WAN_IFACE -j MASQUERADE
 
 echo "🔓 Allowing inbound SSH + VPN..."
 iptables -A INPUT -i $WAN_IFACE -p tcp --dport 22 -j ACCEPT
+iptables -A INPUT -i $WAN_IFACE -p tcp --dport 2222 -j ACCEPT
 iptables -A INPUT -i $WAN_IFACE -p $VPN_PROTO --dport $VPN_PORT -j ACCEPT
+
+echo "🔓 Allowing SSH on VPN interface (tun0)..."
+iptables -A INPUT -i $VPN_IFACE -p tcp --dport 22 -j ACCEPT
 
 echo "🔓 Allowing established/related traffic..."
 iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
@@ -59,4 +63,4 @@ iptables -A INPUT -i $WAN_IFACE -p tcp --dport 443 -j ACCEPT
 echo "💾 Saving rules..."
 netfilter-persistent save
 
-echo "[✓] iptables firewall setup complete (VPN, Docker, nginx, host connectivity)."
+echo "[✓] iptables firewall setup complete (VPN, Docker, nginx, host connectivity, SSH proxy)."
