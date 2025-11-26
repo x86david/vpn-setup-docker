@@ -11,16 +11,16 @@ WAN_IFACE=$(ip route | grep '^default' | awk '{print $5}')
 echo "[*] Detected WAN interface: $WAN_IFACE"
 
 echo "🛑 Resetting UFW..."
-apt-get purge -y ufw
+apt-get purge -y ufw iptables-persistent netfilter-persistent
 apt-get install -y ufw
 
 echo "🔧 Enabling IP forwarding..."
 sed -i '/^#net.ipv4.ip_forward=1/c\net.ipv4.ip_forward=1' /etc/ufw/sysctl.conf
 sed -i '/^#net.ipv6.conf.all.forwarding=1/c\net.ipv6.conf.all.forwarding=1' /etc/ufw/sysctl.conf
 
-# Insert NAT rules at the top of before.rules
+echo "🌐 Writing NAT rules into /etc/ufw/before.rules..."
 cat <<EOF > /etc/ufw/before.rules
-# rules.before
+# /etc/ufw/before.rules
 # NAT table rules
 *nat
 :POSTROUTING ACCEPT [0:0]
@@ -36,35 +36,7 @@ COMMIT
 # End of NAT rules
 
 *filter
+# UFW default filter rules will follow
 EOF
 
-# IPv6 NAT rules
-cat <<EOF > /etc/ufw/before6.rules
-# rules.before6
-*nat
-:POSTROUTING ACCEPT [0:0]
-
-# NAT for VPN IPv6 subnet
--A POSTROUTING -s $VPN_SUBNET_V6 -o $WAN_IFACE -j MASQUERADE
-
-COMMIT
-
-*filter
-EOF
-
-echo "🔓 Allowing inbound SSH (22/tcp) + proxy port (2222/tcp)..."
-ufw allow 22/tcp
-ufw allow 2222/tcp
-
-echo "🔓 Allowing inbound VPN ($VPN_PORT/$VPN_PROTO)..."
-ufw allow $VPN_PORT/$VPN_PROTO
-
-echo "🔓 Allowing nginx/webserver ports (80/tcp and 443/tcp)..."
-ufw allow 80/tcp
-ufw allow 443/tcp
-
-echo "🔓 Enabling UFW..."
-ufw --force enable
-ufw status verbose
-
-echo "[✓] UFW firewall setup complete (VPN, SSH, nginx ports, proxy port for Nginx stream)."
+echo "🌐 Writing
