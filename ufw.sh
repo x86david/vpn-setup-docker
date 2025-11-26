@@ -5,62 +5,66 @@ VPN_SUBNET_V4="10.9.0.0/24"
 VPN_SUBNET_V6="fd42:42:42:42::/64"
 VPN_PORT="1194"
 VPN_PROTO="udp"
-VPN_IFACE="tun0"
 DOCKER_SUBNET_V4="172.17.0.0/16"
-
 WAN_IFACE=$(ip route | grep '^default' | awk '{print $5}')
+
 echo "[*] Detected WAN interface: $WAN_IFACE"
 
-echo "🛑 Removing UFW..."
+echo "🛑 Resetting UFW..."
 apt-get purge -y ufw
-rm -rf /etc/ufw
-
-echo "🛡️ Installing iptables-persistent..."
-DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent netfilter-persistent
+apt-get install -y ufw
 
 echo "🔧 Enabling IP forwarding..."
-sysctl -w net.ipv4.ip_forward=1
-sysctl -w net.ipv6.conf.all.forwarding=1
-grep -q "net.ipv4.ip_forward=1" /etc/sysctl.conf || echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
-grep -q "net.ipv6.conf.all.forwarding=1" /etc/sysctl.conf || echo "net.ipv6.conf.all.forwarding=1" >> /etc/sysctl.conf
-sysctl -p
+sed -i '/^#net.ipv4.ip_forward=1/c\net.ipv4.ip_forward=1' /etc/ufw/sysctl.conf
+sed -i '/^#net.ipv6.conf.all.forwarding=1/c\net.ipv6.conf.all.forwarding=1' /etc/ufw/sysctl.conf
 
-echo "🌐 Flushing old rules..."
-iptables -F
-iptables -X
-iptables -t nat -F
-iptables -t nat -X
-ip6tables -F
-ip6tables -X
-ip6tables -t nat -F
-ip6tables -t nat -X
+# Insert NAT rules at the top of before.rules
+cat <<EOF > /etc/ufw/before.rules
+# rules.before
+# NAT table rules
+*nat
+:POSTROUTING ACCEPT [0:0]
 
-echo "🌐 Setting up NAT for VPN + Docker..."
-iptables -t nat -A POSTROUTING -s $VPN_SUBNET_V4 -o $WAN_IFACE -j MASQUERADE
-iptables -t nat -A POSTROUTING -s $DOCKER_SUBNET_V4 -o $WAN_IFACE -j MASQUERADE
-ip6tables -t nat -A POSTROUTING -s $VPN_SUBNET_V6 -o $WAN_IFACE -j MASQUERADE
+# NAT for VPN subnet
+-A POSTROUTING -s $VPN_SUBNET_V4 -o $WAN_IFACE -j MASQUERADE
 
-echo "🔓 Allowing inbound SSH + VPN..."
-iptables -A INPUT -i $WAN_IFACE -p tcp --dport 22 -j ACCEPT
-iptables -A INPUT -i $WAN_IFACE -p tcp --dport 2222 -j ACCEPT
-iptables -A INPUT -i $WAN_IFACE -p $VPN_PROTO --dport $VPN_PORT -j ACCEPT
+# NAT for Docker subnet
+-A POSTROUTING -s $DOCKER_SUBNET_V4 -o $WAN_IFACE -j MASQUERADE
 
-echo "🔓 Allowing SSH on VPN interface (tun0)..."
-iptables -A INPUT -i $VPN_IFACE -p tcp --dport 22 -j ACCEPT
+COMMIT
 
-echo "🔓 Allowing established/related traffic..."
-iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-iptables -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+# End of NAT rules
 
-echo "🔓 Allowing localhost..."
-iptables -A INPUT -i lo -j ACCEPT
-iptables -A OUTPUT -o lo -j ACCEPT
+*filter
+EOF
 
-echo "🔓 Allowing nginx/webserver on port 80 + 443..."
-iptables -A INPUT -i $WAN_IFACE -p tcp --dport 80 -j ACCEPT
-iptables -A INPUT -i $WAN_IFACE -p tcp --dport 443 -j ACCEPT
+# IPv6 NAT rules
+cat <<EOF > /etc/ufw/before6.rules
+# rules.before6
+*nat
+:POSTROUTING ACCEPT [0:0]
 
-echo "💾 Saving rules..."
-netfilter-persistent save
+# NAT for VPN IPv6 subnet
+-A POSTROUTING -s $VPN_SUBNET_V6 -o $WAN_IFACE -j MASQUERADE
 
-echo "[✓] iptables firewall setup complete (VPN, Docker, nginx, host connectivity, SSH proxy)."
+COMMIT
+
+*filter
+EOF
+
+echo "🔓 Allowing inbound SSH (22/tcp) + proxy port (2222/tcp)..."
+ufw allow 22/tcp
+ufw allow 2222/tcp
+
+echo "🔓 Allowing inbound VPN ($VPN_PORT/$VPN_PROTO)..."
+ufw allow $VPN_PORT/$VPN_PROTO
+
+echo "🔓 Allowing nginx/webserver ports (80/tcp and 443/tcp)..."
+ufw allow 80/tcp
+ufw allow 443/tcp
+
+echo "🔓 Enabling UFW..."
+ufw --force enable
+ufw status verbose
+
+echo "[✓] UFW firewall setup complete (VPN, SSH, nginx ports, proxy port for Nginx stream)."
