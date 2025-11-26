@@ -18,9 +18,10 @@ echo "🔧 Enabling IP forwarding..."
 sed -i '/^#net.ipv4.ip_forward=1/c\net.ipv4.ip_forward=1' /etc/ufw/sysctl.conf
 sed -i '/^#net.ipv6.conf.all.forwarding=1/c\net.ipv6.conf.all.forwarding=1' /etc/ufw/sysctl.conf
 
-echo "🌐 Writing NAT rules into /etc/ufw/before.rules..."
-cat <<EOF > /etc/ufw/before.rules
-# /etc/ufw/before.rules
+echo "🌐 Prepending NAT rules into /etc/ufw/before.rules..."
+tmpfile=$(mktemp)
+cat <<EOF > "$tmpfile"
+# Custom NAT rules
 *nat
 :POSTROUTING ACCEPT [0:0]
 
@@ -32,15 +33,15 @@ cat <<EOF > /etc/ufw/before.rules
 
 COMMIT
 
-# End of NAT rules
-
-*filter
-# UFW default filter rules will follow
+# End of custom NAT rules
 EOF
+cat /etc/ufw/before.rules >> "$tmpfile"
+mv "$tmpfile" /etc/ufw/before.rules
 
-echo "🌐 Writing NAT rules into /etc/ufw/before6.rules..."
-cat <<EOF > /etc/ufw/before6.rules
-# /etc/ufw/before6.rules
+echo "🌐 Prepending NAT rules into /etc/ufw/before6.rules..."
+tmpfile=$(mktemp)
+cat <<EOF > "$tmpfile"
+# Custom NAT rules (IPv6)
 *nat
 :POSTROUTING ACCEPT [0:0]
 
@@ -49,9 +50,10 @@ cat <<EOF > /etc/ufw/before6.rules
 
 COMMIT
 
-*filter
-# UFW default filter rules will follow
+# End of custom NAT rules
 EOF
+cat /etc/ufw/before6.rules >> "$tmpfile"
+mv "$tmpfile" /etc/ufw/before6.rules
 
 echo "🔓 Allowing inbound SSH (22/tcp) + proxy port (2222/tcp)..."
 ufw allow 22/tcp
