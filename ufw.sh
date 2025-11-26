@@ -66,9 +66,9 @@ echo "🔓 Allowing proxy port 2222..."
 iptables -A INPUT -i $WAN_IFACE -p tcp --dport 2222 -j ACCEPT
 
 # DNAT for 2222 → 10.9.0.99:22
-echo "🌐 Setting up DNAT for 2222 → 10.9.0.99:22..."
-iptables -t nat -A PREROUTING -i $WAN_IFACE -p tcp --dport 2222 -j DNAT --to-destination 10.9.0.99:22
-iptables -A FORWARD -p tcp -d 10.9.0.99 --dport 22 -j ACCEPT
+#echo "🌐 Setting up DNAT for 2222 → 10.9.0.99:22..."
+#iptables -t nat -A PREROUTING -i $WAN_IFACE -p tcp --dport 2222 -j DNAT --to-destination 10.9.0.99:22
+#iptables -A FORWARD -p tcp -d 10.9.0.99 --dport 22 -j ACCEPT
 
 # Established + localhost
 echo "🔓 Allowing established/related traffic + localhost..."
