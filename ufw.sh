@@ -21,7 +21,6 @@ sed -i '/^#net.ipv6.conf.all.forwarding=1/c\net.ipv6.conf.all.forwarding=1' /etc
 echo "🌐 Writing NAT rules into /etc/ufw/before.rules..."
 cat <<EOF > /etc/ufw/before.rules
 # /etc/ufw/before.rules
-# NAT table rules
 *nat
 :POSTROUTING ACCEPT [0:0]
 
@@ -39,4 +38,34 @@ COMMIT
 # UFW default filter rules will follow
 EOF
 
-echo "🌐 Writing
+echo "🌐 Writing NAT rules into /etc/ufw/before6.rules..."
+cat <<EOF > /etc/ufw/before6.rules
+# /etc/ufw/before6.rules
+*nat
+:POSTROUTING ACCEPT [0:0]
+
+# NAT for VPN IPv6 subnet
+-A POSTROUTING -s $VPN_SUBNET_V6 -o $WAN_IFACE -j MASQUERADE
+
+COMMIT
+
+*filter
+# UFW default filter rules will follow
+EOF
+
+echo "🔓 Allowing inbound SSH (22/tcp) + proxy port (2222/tcp)..."
+ufw allow 22/tcp
+ufw allow 2222/tcp
+
+echo "🔓 Allowing inbound VPN ($VPN_PORT/$VPN_PROTO)..."
+ufw allow $VPN_PORT/$VPN_PROTO
+
+echo "🔓 Allowing nginx/webserver ports (80/tcp and 443/tcp)..."
+ufw allow 80/tcp
+ufw allow 443/tcp
+
+echo "🔓 Enabling UFW..."
+ufw --force enable
+ufw status verbose
+
+echo "[✓] UFW firewall setup complete (VPN, SSH, nginx ports, proxy port for Nginx stream)."
